@@ -5,6 +5,7 @@ from typing import Dict, Tuple, Union
 import sys
 
 
+
 def main() -> None:
     try:
         config: Dict[str, Union[Tuple[int, int],
@@ -18,7 +19,9 @@ def main() -> None:
         sys.exit()
 
     maze_gen.generate_maze()
-
+    maze_gen.set_to_file()
+    chemin = maze_gen.rout()
+    print(chemin)
 
 if __name__ == "__main__":
     main()
