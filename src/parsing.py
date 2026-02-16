@@ -52,7 +52,9 @@ def transform_data(data: Dict[str, Any]) -> None:
     data["EXIT"] = get_entry_or_exit(str(data["EXIT"]))
     data["WIDTH"] = int(data["WIDTH"])
     data["HEIGHT"] = int(data["HEIGHT"])
-    perfect_raw: str = str(data.get("PERFECT", "")).lower()
+    perfect_raw: str = str(data["PERFECT"]).lower()
+    if not (perfect_raw == "true" or perfect_raw == "false"):
+        raise Exception("Error parsing data, Perfect must be true or false.")
     data["PERFECT"] = perfect_raw == "true"
 
     exit_point: Tuple[int, int] = data["EXIT"]

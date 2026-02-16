@@ -1,41 +1,95 @@
+"""
+Maze generation utilities for the A-Maze_Ing application.
+
+This module implements a Point representation, a PathEnum of directions and
+a MazeGenerator that creates mazes using Wilson's algorithm. All public
+functions and classes include Google-style docstrings and explicit typing.
+"""
 from __future__ import annotations
-from typing import Tuple, Dict, Union, List
+from typing import (
+    Tuple,
+    Dict,
+    Union,
+    List,
+    Set,
+    Optional,
+    Deque,
+)
 from enum import Enum
-from random import choice
+from random import sample, choice
 from collections import deque
+from dataclasses import dataclass
 
 
+@dataclass(slots=True, frozen=True)
 class Point:
-    def __init__(self, row: int, col: int):
-        self.row: int = row
-        self.col: int = col
+    """Immutable 2D point representing a maze cell.
+
+    Attributes:
+        row: Row index of the point.
+        col: Column index of the point.
+    """
+
+    row: int
+    col: int
 
     @classmethod
-    def from_tuple(cls, data) -> Point:
-        p: Point = cls(
-            row=data[0],
-            col=data[1]
-        )
+    def from_tuple(cls, data: Tuple[int, int]) -> "Point":
+        """Create a Point from a (row, col) tuple.
+
+        Args:
+            data: A 2-tuple containing (row, col).
+
+        Returns:
+            A new Point instance.
+        """
+        p: Point = cls(row=data[0], col=data[1])
         return p
 
     @staticmethod
-    def add_points(p1: Point, p2: Point) -> Point:
+    def add_points(p1: "Point", p2: "Point") -> "Point":
+        """Return the vector addition of two points.
+
+        Args:
+            p1: First point.
+            p2: Second point.
+
+        Returns:
+            A new Point equal to p1 + p2 component-wise.
+        """
         n_p: Point = Point(p1.row + p2.row, p1.col + p2.col)
         return n_p
 
-    def __eq__(self, p: Point) -> bool:
-        if isinstance(p, Point):
-            return p.row == self.row and p.col == self.col
+    def __eq__(self, other: object) -> bool:  # type: ignore[override]
+        """Compare two points for equality.
+
+        Args:
+            other: Object to compare with.
+
+        Returns:
+            True if other is a Point with the same coordinates,
+            False otherwise.
+        """
+        if isinstance(other, Point):
+            return other.row == self.row and other.col == self.col
         return NotImplemented
 
-    def __hash__(self):
+    def __hash__(self) -> int:
+        """Return a stable hash for the point."""
         return hash((self.row, self.col))
 
     def __str__(self) -> str:
+        """Return a human readable representation of the point."""
         return f"[{self.row},{self.col}]"
 
 
 class PathEnum(Enum):
+    """Enumeration of maze wall directions with bit and index metadata.
+
+    Each enum value is a tuple (bitmask, shift_index) used to read/write
+    wall bits in the internal integer cell representation.
+    """
+
     N = (1, 0)
     E = (2, 1)
     S = (4, 2)
@@ -43,6 +97,17 @@ class PathEnum(Enum):
 
     @staticmethod
     def oppose_bit(bit: int) -> int:
+        """Return the opposite direction bit for a given direction bit.
+
+        Args:
+            bit: Direction bit value (1, 2, 4, or 8).
+
+        Returns:
+            The opposite direction bit.
+
+        Raises:
+            ValueError: If the provided bit is not a valid direction bit.
+        """
         if bit == PathEnum.N.value[0]:
             return PathEnum.S.value[0]
         if bit == PathEnum.E.value[0]:
@@ -55,8 +120,14 @@ class PathEnum(Enum):
 
 
 class MazeGenerator:
+    """Generate and export mazes using Wilson's algorithm.
 
-    dir: Dict[PathEnum, Point] = {
+    The maze stores cell wall information as integers where bits correspond
+    to walls. The class supports placing a fixed logo, generating mazes,
+    converting the maze to hexadecimal characters and writing to a file.
+    """
+
+    directions: Dict[PathEnum, Point] = {
         PathEnum.N: Point(-1, 0),
         PathEnum.E: Point(0, 1),
         PathEnum.S: Point(1, 0),
@@ -70,157 +141,356 @@ class MazeGenerator:
         entry_point: Tuple[int, int],
         exit_point: Tuple[int, int],
         output_file: str,
-        perfect: bool
+        perfect: bool,
     ) -> None:
+        """Initialize a MazeGenerator.
+
+        Args:
+            height: Number of rows in the maze.
+            width: Number of columns in the maze.
+            entry_point: (row, col) of the entry cell.
+            exit_point: (row, col) of the exit cell.
+            output_file: Path to the file where the maze will be written.
+            perfect: If True, produce a perfect maze (no loops).
+        """
         self.height: int = height
         self.width: int = width
         self.entry_point: Point = Point.from_tuple(entry_point)
         self.exit_point: Point = Point.from_tuple(exit_point)
         self.output_file: str = output_file
         self.perfect: bool = perfect
-        self.path_str: str = ""
-        self.path: List[Point] = [entry_point, exit_point]
-        self.maze: List[List[int]] = self.init_maze()
+        self.path_str: List[str] = []
+        self.path: List[Point] = [Point.from_tuple(
+            entry_point), Point.from_tuple(exit_point)]
+        self.maze: List[List[int]] = []
+        self.logo: Set[Point] = set()
 
     @classmethod
     def from_dict(
         cls,
-        data: Dict[str, Union[Tuple[int, int], int, str, bool]]
-    ) -> MazeGenerator:
+        data: Dict[str, Union[Tuple[int, int], int, str, bool]],
+    ) -> "MazeGenerator":
+        """Create a MazeGenerator from a configuration dictionary.
+
+        Args:
+            data: Configuration containing keys HEIGHT, WIDTH, ENTRY, EXIT,
+                OUTPUT_FILE and PERFECT.
+
+        Returns:
+            A configured MazeGenerator instance.
+        """
         maze: MazeGenerator = cls(
             height=data["HEIGHT"],
             width=data["WIDTH"],
             entry_point=data["ENTRY"],
             exit_point=data["EXIT"],
             output_file=data["OUTPUT_FILE"],
-            perfect=data["PERFECT"]
+            perfect=data["PERFECT"],
         )
         return maze
 
     def init_maze(self) -> List[List[int]]:
+        """Create the default filled maze representation.
+
+        Every cell is initialized to 15 (all walls present).
+
+        Returns:
+            A 2D list representing the maze cells.
+        """
         maze: List[List[int]] = [
-            [15 for _ in range(self.width)]
-            for _ in range(self.height)
-        ]
+            [15 for _ in range(self.width)] for _ in range(self.height)]
+        self.path = []
+        self.path_str = []
         return maze
 
     def check_bounds(self, p: Point) -> bool:
-        return self.height > p.row and self.width > p.col \
-            and p.col >= 0 and p.row >= 0
+        """Return True if a point lies within maze bounds.
+
+        Args:
+            p: Point to check.
+
+        Returns:
+            True when 0 <= p.row < height and 0 <= p.col < width.
+        """
+        return (
+            self.height > p.row
+            and self.width > p.col
+            and p.col >= 0
+            and p.row >= 0
+        )
 
     def check_walls(self, p: Point, path_enum: PathEnum) -> bool:
+        """Check whether a given wall bit is set on a cell.
+
+        Args:
+            p: Cell coordinate to inspect.
+            path_enum: Direction enum specifying which wall to test.
+
+        Returns:
+            True if the wall bit is set (wall present), False otherwise.
+        """
         return (self.maze[p.row][p.col] >> path_enum.value[1]) & 1 == 1
 
     def place_logo(self) -> None:
-        pass
+        """Try to place a predefined '42' logo at the maze center.
+
+        If the maze is too small the logo is not placed. Cells used by the
+        logo are forced to have all walls present.
+        """
+        if not (self.width >= 9 and self.height >= 7):
+            print("Error, can't place 42. Maze too small.")
+            return
+        h: int = self.height // 2
+        w: int = self.width // 2
+        self.logo.add(Point(h, w - 1))
+        self.logo.add(Point(h, w - 2))
+        self.logo.add(Point(h, w - 3))
+        self.logo.add(Point(h - 1, w - 3))
+        self.logo.add(Point(h - 2, w - 3))
+        self.logo.add(Point(h + 1, w - 1))
+        self.logo.add(Point(h + 2, w - 1))
+        self.logo.add(Point(h, w + 1))
+        self.logo.add(Point(h, w + 2))
+        self.logo.add(Point(h, w + 3))
+        self.logo.add(Point(h - 1, w + 3))
+        self.logo.add(Point(h - 2, w + 3))
+        self.logo.add(Point(h - 2, w + 2))
+        self.logo.add(Point(h - 2, w + 1))
+        self.logo.add(Point(h + 1, w + 1))
+        self.logo.add(Point(h + 2, w + 1))
+        self.logo.add(Point(h + 2, w + 2))
+        self.logo.add(Point(h + 2, w + 3))
+        if self.entry_point in self.logo or self.exit_point in self.logo:
+            print("you can't begin from the 42 symbol")
+            self.logo.clear()
+            return
+        for p in self.logo:
+            self.maze[p.row][p.col] = 15
 
     def generate_maze(self) -> None:
+        """Create a new maze and optionally post-process it.
+
+        The core generation is Wilson's algorithm. If the maze is not
+        requested to be perfect, a path is found and extra walls are broken
+        to introduce loops.
+        """
         self.maze = self.init_maze()
         self.place_logo()
         self.wilson_algo()
         if not self.perfect:
-            self.break_walls()
+            self.find_path()
+            self.remove_walls_non_perfect()
+            self.path = []
+            self.path_str = []
+
+    def break_wall(self, p1: Point, p2: Point, path_enum: PathEnum) -> None:
+        """Toggle the wall bits between two adjacent cells.
+
+        Args:
+            p1: First cell.
+            p2: Second cell.
+            path_enum: Direction from p1 to p2.
+        """
+        bit: int = path_enum.value[0]
+        op_bit: int = PathEnum.oppose_bit(bit)
+        self.maze[p1.row][p1.col] ^= bit
+        self.maze[p2.row][p2.col] ^= op_bit
+
+    def remove_walls_non_perfect(self) -> None:
+        """Break a small number of walls on the solution path to
+        create loops."""
+        if self.height == 1 or self.width == 1:
+            return
+
+        valid_points: Set[Point] = set()
+        for row in range(self.height):
+            for col in range(self.width):
+                p: Point = Point(row, col)
+                if p not in self.logo:
+                    valid_points.add(p)
+
+        n_to_break: int = int(max(5 * (self.width * self.height) // 100, 1))
+        for _ in range(n_to_break):
+            random_point: Point = sample(valid_points, 1)[0]
+
+            neighbors: Set[Tuple[PathEnum, Point]] = set()
+            for k, v in self.directions.items():
+                neighbor: Point = Point.add_points(random_point, v)
+                if (
+                    self.check_bounds(neighbor)
+                    and neighbor not in self.logo
+                    and self.check_walls(random_point, k)
+                ):
+                    neighbors.add((k, neighbor))
+
+            if len(neighbors) == 0:
+                random_point = sample(valid_points, 1)[0]
+                continue
+
+            random_neighbor: Tuple[PathEnum, Point] = sample(tuple(neighbors),
+                                                             1)[0]
+            self.break_wall(
+                random_point, random_neighbor[1], random_neighbor[0])
+            try:
+                valid_points.remove(random_point)
+            except ValueError:
+                pass
 
     def wilson_algo(self) -> None:
-        unvisited: List[Point] = [
+        """Generate the maze using Wilson's algorithm
+        (loop-erased random walks)."""
+        unvisited: Set[Point] = {
             Point(row, col)
             for col in range(self.width)
             for row in range(self.height)
-        ]
+        }
         unvisited.remove(self.entry_point)
-        visited: List[Point] = [self.entry_point]
+        for p in self.logo:
+            unvisited.remove(p)
+        visited: Set[Point] = {self.entry_point}
 
         while len(unvisited) >= 1:
-            tree: List[Tuple[Dict[PathEnum, Point], Point]
-                       ] = self.random_walk(visited, unvisited)
+            tree: List[Point]
+            walls: List[PathEnum]
+            tree, walls = self.random_walk(visited, unvisited)
 
             if not len(tree):
                 continue
 
-            for dir, point in tree:
-                dir_p: Point = dir[1]
-                path: PathEnum = dir[0]
-                n_point = Point.add_points(point, dir_p)
-
-                bit: int = path.value[0]
-                op_bit: int = PathEnum.oppose_bit(bit)
-                self.maze[point.row][point.col] ^= bit
-                self.maze[n_point.row][n_point.col] ^= op_bit
-
-                visited.append(point)
-                if point in unvisited:
-                    unvisited.remove(point)
+            for i in range(len(walls)):
+                n_point = tree[i + 1]
+                self.break_wall(tree[i], n_point, walls[i])
+                visited.add(tree[i])
+                if tree[i] in unvisited:
+                    unvisited.remove(tree[i])
 
     def random_walk(
         self,
-        visited: List[Point],
-        unvisited: List[Point]
-    ) -> List[Tuple[Dict[PathEnum, Point], Point]]:
-        tree: List[Point] = [choice(unvisited)]
-        paths: List[Tuple[Dict[PathEnum, Point], Point]] = []
+        visited: Set[Point],
+        unvisited: Set[Point],
+    ) -> Tuple[List[Point], List[PathEnum]]:
+        """Perform a loop-erased random walk until it reaches visited set.
 
-        while (1):
-            dir: Dict[PathEnum, Point] = choice(list(self.dir.items()))
-            r_d: Point = dir[1]
-            n_p: Point = Point.add_points(tree[-1], r_d)
+        Args:
+            visited: Set of already visited points in the maze.
+            unvisited: Set of points not yet part of the spanning tree.
 
-            if n_p in tree:
-                index: int = tree.index(n_p)
-                tree = tree[:index]
-                paths = paths[:index]
+        Returns:
+            A tuple (tree, walls) where tree is the ordered list of points
+            visited during the walk and walls is the list of directions
+            taken between consecutive points.
+        """
+        new_point: Point = sample(tuple(unvisited), 1)[0]
+        tree: List[Point] = [new_point]
+        tree_index: Dict[Point, int] = {new_point: 0}
+        walls: List[PathEnum] = []
+
+        while True:
+            neighbors: List[Tuple[PathEnum, Point]] = []
+            for k, v in self.directions.items():
+                neighbor: Point = Point.add_points(new_point, v)
+                if self.check_bounds(neighbor) and neighbor not in self.logo:
+                    neighbors.append((k, neighbor))
+
+            if not len(neighbors):
+                new_point = sample(tuple(unvisited), 1)[0]
+                tree = [new_point]
+                tree_index = {new_point: 0}
+                assert tree_index.keys() == set(tree)
+                continue
+
+            dir_random: Tuple[PathEnum, Point] = choice(neighbors)
+            path_enum: PathEnum = dir_random[0]
+            new_point = dir_random[1]
+
+            if new_point in tree_index:
+                i: int = tree_index[new_point] + 1
+                end: int = len(tree)
+                tree_to_remove: List[Point] = tree[i:end]
+                tree = tree[:i]
+                walls = walls[: i - 1]
+                assert len(walls) == max(0, len(tree) - 1)
+                for p in tree_to_remove:
+                    tree_index.pop(p)
                 if len(tree) <= 0:
-                    return paths
-            elif (self.check_bounds(n_p)):
-                paths.append((dir, tree[-1]))
-                tree.append(n_p)
-            if n_p in visited:
-                return paths
+                    return tree, walls
+                new_point = tree[-1]
+            else:
+                tree.append(new_point)
+                tree_index.update({new_point: len(tree) - 1})
+                walls.append(path_enum)
 
-    def break_walls(self) -> None:
-        pass
+            if new_point in visited:
+                return tree, walls
 
-    def convert_to_hex(self) -> List[List[str | int]]:
+    def find_path(self) -> Optional[List[Point]]:
+        """Find the shortest path between entry and exit using BFS.
+
+        Returns:
+            The ordered list of Points forming the path from entry to exit,
+            or None if no path exists. The generator's self.path and
+            self.path_str are updated when a path is found.
+        """
+        start: Point = self.entry_point
+        end: Point = self.exit_point
+        visited: Dict[Point, int] = {start: 0}
+        parent: Dict[Point, Tuple[Point, PathEnum]] = {}
+        queue: Deque[Point] = deque([start])
+        while queue:
+            current: Point = queue.popleft()
+            if current == end:
+                break
+            for direction, point in self.directions.items():
+                voisin: Point = Point.add_points(current, point)
+                if (self.check_walls(current, direction)
+                        or not self.check_bounds(voisin)):
+                    continue
+                if voisin not in visited:
+                    visited[voisin] = visited[current] + 1
+                    parent[voisin] = (current, direction)
+                    queue.append(voisin)
+        if end not in visited:
+            return None
+        current: Point = end
+        while current != start:
+            self.path.append(current)
+            prev_point, move = parent[current]
+            self.path_str.append(move.name)
+            current = prev_point
+        self.path.append(start)
+        self.path.reverse()
+        self.path_str.reverse()
+        return self.path
+
+    def convert_to_hex(self) -> List[List[Union[str, int]]]:
+        """Convert the integer maze representation to hexadecimal characters.
+
+        Returns:
+            A 2D list where each cell is a single hexadecimal character string
+            representing the wall bits for that cell.
+        """
         char_hex: str = "0123456789ABCDEF"
-        maze: List[List[str | int]] = self.init_maze()
+        maze: List[List[Union[str, int]]] = [
+            [15 for _ in range(self.width)] for _ in range(self.height)]
         for row, height in enumerate(self.maze):
             for col, value in enumerate(height):
                 maze[row][col] = char_hex[value]
-
         return maze
 
     def set_to_file(self) -> None:
-        maze: List[List[str | int]] = self.convert_to_hex()
+        """Write the maze, entry/exit and path string to the output file.
+
+        The maze is written as hexadecimal characters line by line followed
+        by the coordinates for entry and exit and the path string.
+        """
+        path_str: str = "".join(self.path_str)
+        maze: List[List[Union[str, int]]] = self.convert_to_hex()
         with open(self.output_file, "w") as fd:
             for row in maze:
                 for value in row:
                     fd.write(value)
                 fd.write("\n")
 
-    def rout(self):
-        start = self.entry_point
-        end = self.exit_point
-        visited: Dict[Point, int] = {start: 0}
-        parent: Dict[Point, Point] = {}
-        queue = deque([start])
-        while queue:
-            current = queue.popleft()
-            if current == end:
-                break
-            for direction, point in self.dir.items():
-                voisin = Point.add_points(current, point)
-                if self.check_walls(current, direction) or not self.check_bounds(voisin):
-                    continue
-                if voisin not in visited:
-                    visited[voisin] = visited[current] + 1
-                    parent[voisin] = current
-                    queue.append(voisin)
-        if end not in parent:
-            return None
-        self.path = []
-        current = end
-        while current != start:
-            self.path.append(current)
-            current = parent[current]
-        self.path.append(start)
-        self.path.reverse()
-        return self.path
+            fd.write(f"\n{self.entry_point.row},{self.entry_point.col}")
+            fd.write(f"\n{self.exit_point.row},{self.exit_point.col}")
+            fd.write(f'\n{"".join(path_str)}')
