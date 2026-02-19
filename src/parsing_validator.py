@@ -41,11 +41,12 @@ class ParsingValidator(BaseModel):
         Raises:
             ValueError: If the value is less than 1 or greater than 120.
         """
-        if value <= 0:
-            raise ValueError("cannot be less than 1")
+        if value < 2:
+            raise ValueError("cannot be less than 2")
         if value > 120:
             raise ValueError("cannot be above 120")
         return value
+    
 
     @field_validator("entry_point", "exit_point")
     @classmethod

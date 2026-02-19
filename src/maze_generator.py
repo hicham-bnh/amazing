@@ -153,6 +153,7 @@ class MazeGenerator:
             output_file: Path to the file where the maze will be written.
             perfect: If True, produce a perfect maze (no loops).
         """
+
         self.height: int = height
         self.width: int = width
         self.entry_point: Point = Point.from_tuple(entry_point)
@@ -179,6 +180,7 @@ class MazeGenerator:
         Returns:
             A configured MazeGenerator instance.
         """
+
         maze: MazeGenerator = cls(
             height=data["HEIGHT"],
             width=data["WIDTH"],
@@ -197,6 +199,7 @@ class MazeGenerator:
         Returns:
             A 2D list representing the maze cells.
         """
+
         maze: List[List[int]] = [
             [15 for _ in range(self.width)] for _ in range(self.height)]
         self.path = []
@@ -212,6 +215,7 @@ class MazeGenerator:
         Returns:
             True when 0 <= p.row < height and 0 <= p.col < width.
         """
+
         return (
             self.height > p.row
             and self.width > p.col
@@ -229,6 +233,7 @@ class MazeGenerator:
         Returns:
             True if the wall bit is set (wall present), False otherwise.
         """
+
         return (self.maze[p.row][p.col] >> path_enum.value[1]) & 1 == 1
 
     def place_logo(self) -> None:
@@ -237,6 +242,7 @@ class MazeGenerator:
         If the maze is too small the logo is not placed. Cells used by the
         logo are forced to have all walls present.
         """
+
         if not (self.width >= 9 and self.height >= 7):
             print("Error, can't place 42. Maze too small.")
             return
@@ -274,6 +280,7 @@ class MazeGenerator:
         requested to be perfect, a path is found and extra walls are broken
         to introduce loops.
         """
+
         self.maze = self.init_maze()
         self.place_logo()
         self.wilson_algo()
@@ -291,6 +298,7 @@ class MazeGenerator:
             p2: Second cell.
             path_enum: Direction from p1 to p2.
         """
+
         bit: int = path_enum.value[0]
         op_bit: int = PathEnum.oppose_bit(bit)
         self.maze[p1.row][p1.col] ^= bit
@@ -299,6 +307,7 @@ class MazeGenerator:
     def remove_walls_non_perfect(self) -> None:
         """Break a small number of walls on the solution path to
         create loops."""
+
         if self.height == 1 or self.width == 1:
             return
 
@@ -320,6 +329,7 @@ class MazeGenerator:
                     self.check_bounds(neighbor)
                     and neighbor not in self.logo
                     and self.check_walls(random_point, k)
+                    and self.check_3_by_3(random_point, k, v)
                 ):
                     neighbors.add((k, neighbor))
 
@@ -339,6 +349,7 @@ class MazeGenerator:
     def wilson_algo(self) -> None:
         """Generate the maze using Wilson's algorithm
         (loop-erased random walks)."""
+
         unvisited: Set[Point] = {
             Point(row, col)
             for col in range(self.width)
@@ -380,6 +391,7 @@ class MazeGenerator:
             visited during the walk and walls is the list of directions
             taken between consecutive points.
         """
+
         new_point: Point = sample(tuple(unvisited), 1)[0]
         tree: List[Point] = [new_point]
         tree_index: Dict[Point, int] = {new_point: 0}
@@ -431,6 +443,7 @@ class MazeGenerator:
             or None if no path exists. The generator's self.path and
             self.path_str are updated when a path is found.
         """
+
         start: Point = self.entry_point
         end: Point = self.exit_point
         visited: Dict[Point, int] = {start: 0}
@@ -469,6 +482,7 @@ class MazeGenerator:
             A 2D list where each cell is a single hexadecimal character string
             representing the wall bits for that cell.
         """
+
         char_hex: str = "0123456789ABCDEF"
         maze: List[List[Union[str, int]]] = [
             [15 for _ in range(self.width)] for _ in range(self.height)]
@@ -483,6 +497,7 @@ class MazeGenerator:
         The maze is written as hexadecimal characters line by line followed
         by the coordinates for entry and exit and the path string.
         """
+
         path_str: str = "".join(self.path_str)
         maze: List[List[Union[str, int]]] = self.convert_to_hex()
         with open(self.output_file, "w") as fd:
@@ -494,3 +509,154 @@ class MazeGenerator:
             fd.write(f"\n{self.entry_point.row},{self.entry_point.col}")
             fd.write(f"\n{self.exit_point.row},{self.exit_point.col}")
             fd.write(f'\n{"".join(path_str)}')
+
+    def check_north_east(self, p: Point) -> bool:
+        """Check the 2x2 area to the north-east of point p for walls.
+
+        Args:
+            p: The bottom-left point of the 2x2 area to check.
+
+        Returns:
+            True if the 2x2 area has at least one wall, False otherwise.
+        """
+
+        all_points: List[Point] = []
+
+        for row in range(2):
+            for col in range(2):
+                n_p: Point = Point.add_points(p, Point(-row, col))
+                if self.check_bounds(n_p):
+                    all_points.append(n_p)
+                else:
+                    return False
+
+        for point in all_points:
+            for k, _ in self.directions.items():
+                if self.check_walls(point, k):
+                    return True
+
+        return False
+
+    def check_north_west(self, p: Point) -> bool:
+        """Check that the 2x2 area north-west of point p has at least one wall.
+
+        Args:
+            p: The bottom-right point of the 2x2 area to check.
+
+        Returns:
+            True if the 2x2 area has at least one wall, False otherwise.
+        """
+
+        all_points: List[Point] = []
+
+        for row in range(2):
+            for col in range(2):
+                n_p: Point = Point.add_points(p, Point(-row, -col))
+                if self.check_bounds(n_p):
+                    all_points.append(n_p)
+                else:
+                    return False
+
+        for point in all_points:
+            for k, _ in self.directions.items():
+                if self.check_walls(point, k):
+                    return True
+
+        return False
+
+    def check_south_east(self, p: Point) -> bool:
+        """Check the 2x2 area to the south-east of point p for walls.
+
+        Args:
+            p: The top-left point of the 2x2 area to check.
+
+        Returns:
+            True if the 2x2 area has at least one wall, False otherwise.
+        """
+
+        all_points: List[Point] = []
+
+        for row in range(2):
+            for col in range(2):
+                n_p: Point = Point.add_points(p, Point(row, col))
+                if self.check_bounds(n_p):
+                    all_points.append(n_p)
+                else:
+                    return False
+
+        for point in all_points:
+            for k, _ in self.directions.items():
+                if self.check_walls(point, k):
+                    return True
+
+        return False
+
+    def check_south_west(self, p: Point) -> bool:
+        """Check that the 2x2 area south-west of point p has at least one wall.
+
+        Args:
+            p: The top-right point of the 2x2 area to check.
+
+        Returns:
+            True if the 2x2 area has at least one wall, False otherwise.
+        """
+
+        all_points: List[Point] = []
+
+        for row in range(2):
+            for col in range(2):
+                n_p: Point = Point.add_points(p, Point(row, -col))
+                if self.check_bounds(n_p):
+                    all_points.append(n_p)
+                else:
+                    return False
+
+        for point in all_points:
+            for k, _ in self.directions.items():
+                if self.check_walls(point, k):
+                    return True
+
+        return False
+
+    def check_3_by_3(self, p: Point, path: PathEnum, dir_point: Point) -> bool:
+        """Check that breaking a wall in the given direction from point p does
+        not create a 2x2 open area.
+
+        Args:
+            p: The point from which the wall would be broken.
+            path: The direction in which the wall would be broken.
+            dir_point: The point representing the direction vector.
+
+        Returns:
+            True if breaking the wall does not create a 2x2 open area,
+            False otherwise.
+        """
+
+        tmp_maze = [row.copy() for row in self.maze]
+
+        if not self.check_walls(p, path):
+            return True
+
+        n_p = Point.add_points(p, dir_point)
+        if n_p in self.logo:
+            return False
+
+        if (n_p.row >= self.height
+            or n_p.col >= self.width
+            or n_p.row < 0
+                or n_p.col < 0):
+            return False
+
+        self.break_wall(p, n_p, path)
+
+        if (
+            self.check_north_east(p) and
+            self.check_north_west(p) and
+            self.check_south_east(p) and
+            self.check_south_west(p)
+        ):
+            self.maze = tmp_maze
+            return True
+
+        self.maze = tmp_maze
+        return False

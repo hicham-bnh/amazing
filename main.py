@@ -7,7 +7,7 @@ initializes required resources and handles top-level errors.
 from src.display_maze import MazeRepresentation
 from src.parsing import get_config
 
-from typing import Dict, Tuple, Union
+from typing import Dict, Tuple, Union, Optional
 import sys
 
 
@@ -23,8 +23,11 @@ def main() -> None:
         SystemExit: Exits the process on unrecoverable errors.
     """
     try:
+        file_name: Optional[str] = None
+        if len(sys.argv) != 1:
+            file_name = sys.argv[1]
         config: Dict[str, Union[Tuple[int, int],
-                                int, str, bool]] = get_config()
+                                int, str, bool]] = get_config(file_name)
         rpr: MazeRepresentation = MazeRepresentation(config)
         rpr.maze_gen.generate_maze()
         rpr.maze_gen.find_path()
