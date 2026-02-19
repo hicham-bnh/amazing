@@ -7,7 +7,7 @@ initializes required resources and handles top-level errors.
 from src.display_maze import MazeRepresentation
 from src.parsing import get_config
 
-from typing import Dict, Tuple, Union, Optional
+from typing import Dict, Any, Optional
 import sys
 
 
@@ -26,8 +26,7 @@ def main() -> None:
         file_name: Optional[str] = None
         if len(sys.argv) != 1:
             file_name = sys.argv[1]
-        config: Dict[str, Union[Tuple[int, int],
-                                int, str, bool]] = get_config(file_name)
+        config: Dict[str, Any] = get_config(file_name)
         rpr: MazeRepresentation = MazeRepresentation(config)
         rpr.maze_gen.generate_maze()
         rpr.maze_gen.find_path()
@@ -42,11 +41,13 @@ def main() -> None:
 
     try:
         rpr.launch()
+        mlx = rpr.xvar.mlx
+        assert mlx is not None, "mlx must be initialized before exiting loop"
 
-        rpr.xvar.mlx.mlx_key_hook(rpr.xvar.win_ptr, rpr.key_hook, None)
-        rpr.xvar.mlx.mlx_hook(rpr.xvar.win_ptr, 33, 0, rpr.quit_mlx, None)
+        mlx.mlx_key_hook(rpr.xvar.win_ptr, rpr.key_hook, None)
+        mlx.mlx_hook(rpr.xvar.win_ptr, 33, 0, rpr.quit_mlx, None)
 
-        rpr.xvar.mlx.mlx_loop(rpr.xvar.mlx_ptr)
+        mlx.mlx_loop(rpr.xvar.mlx_ptr)
     except Exception as e:
         print(f"Error main: {e}")
         sys.exit()

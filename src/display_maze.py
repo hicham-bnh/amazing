@@ -33,14 +33,14 @@ class XVar:
 
     def __init__(self) -> None:
         """Initialize default values for mlx/image/window state."""
-        self.mlx: Mlx = None  # type: ignore[assignment]
-        self.mlx_ptr: Any = None
+        self.mlx: Optional[Mlx] = None
+        self.mlx_ptr: Optional[Any] = None
 
-        self.win_ptr: Any = None
+        self.win_ptr: Optional[Any] = None
         self.win_width: int = 0
         self.win_height: int = 0
 
-        self.img_ptr: Any = None
+        self.img_ptr: Optional[Any] = None
         self.img_width: int = 0
         self.img_height: int = 0
         self.bpp: int = 0
@@ -100,7 +100,10 @@ class MazeRepresentation:
             m_ptr: Any = self.xvar.mlx_ptr
             w_ptr: Any = self.xvar.win_ptr
             i_ptr: Any = self.xvar.img_ptr
-            self.xvar.mlx.mlx_put_image_to_window(m_ptr, w_ptr, i_ptr, 0, 0)
+            mlx = self.xvar.mlx
+            assert mlx is not None, "mlx must be initialized before " \
+                "displaying image"
+            mlx.mlx_put_image_to_window(m_ptr, w_ptr, i_ptr, 0, 0)
             return
 
         return wrapper
@@ -121,7 +124,10 @@ class MazeRepresentation:
                     *args: Any, **kwargs: Any) -> None:
             m_ptr: Any = self.xvar.mlx_ptr
             w_ptr: Any = self.xvar.win_ptr
-            self.xvar.mlx.mlx_clear_window(m_ptr, w_ptr)
+            mlx = self.xvar.mlx
+            assert mlx is not None, "mlx must be initialized before " \
+                "clearing window"
+            mlx.mlx_clear_window(m_ptr, w_ptr)
             func(self, *args, **kwargs)
             return
 
@@ -145,15 +151,18 @@ class MazeRepresentation:
         def wrapper(self: "MazeRepresentation",
                     *args: Any, **kwargs: Any) -> None:
             m_ptr: Any = self.xvar.mlx_ptr
-            self.xvar.mlx.mlx_destroy_image(m_ptr, self.xvar.img_ptr)
+            mlx = self.xvar.mlx
+            assert mlx is not None, "mlx must be initialized before " \
+                "destroying image"
+            mlx.mlx_destroy_image(m_ptr, self.xvar.img_ptr)
             self.create_img()
             self.get_img_data()
-            try:
-                mv: Any = self.xvar.maze_img
-                mv[:] = b'\x00' * len(mv)
-            except Exception:
-                # If clearing fails, continue; failing to clear is non-fatal.
-                pass
+            mv = self.xvar.maze_img
+            if mv is not None:
+                try:
+                    mv[:] = b'\x00' * len(mv)
+                except Exception:
+                    pass
             func(self, *args, **kwargs)
             return
 
@@ -209,6 +218,8 @@ class MazeRepresentation:
         pixel_d: int = self.xvar.pixel_d
         line_len: int = self.xvar.line_len
         bpp: int = self.xvar.bpp
+        mv = self.xvar.maze_img
+        assert mv is not None, "maze_img must be initialized before drawing"
         for p in points:
             pixel: int = (p.row * self.xvar.line_len * self.xvar.pixel_d +
                           p.col * self.xvar.pixel_d * self.xvar.bpp)
@@ -216,7 +227,7 @@ class MazeRepresentation:
                 for y in range(self.xvar.wall_thickness, pixel_d):
                     pos: int = pixel + x * line_len + y * bpp
                     for c in range(bpp):
-                        self.xvar.maze_img[pos + c] = (color >> (8 * c)) & 0xFF
+                        mv[pos + c] = (color >> (8 * c)) & 0xFF
 
     def display_wall_north(self, pixel: int, color: int) -> None:
         """Draw the northern wall segment for a cell at buffer offset pixel."""
@@ -224,12 +235,13 @@ class MazeRepresentation:
         pixel_d: int = self.xvar.pixel_d
         wall_thickness: int = self.xvar.wall_thickness
         line_len: int = self.xvar.line_len
-
+        mv = self.xvar.maze_img
+        assert mv is not None, "maze_img must be initialized before drawing"
         for x in range(wall_thickness):
             for y in range(pixel_d):
                 pos: int = pixel + x * line_len + y * bpp
                 for c in range(bpp):
-                    self.xvar.maze_img[pos + c] = (color >> (8 * c)) & 0xFF
+                    mv[pos + c] = (color >> (8 * c)) & 0xFF
 
     def display_wall_south(self, pixel: int, color: int) -> None:
         """Draw the southern wall segment for a cell at buffer offset pixel."""
@@ -238,11 +250,13 @@ class MazeRepresentation:
         wall_thickness: int = self.xvar.wall_thickness
         line_len: int = self.xvar.line_len
 
+        mv = self.xvar.maze_img
+        assert mv is not None, "maze_img must be initialized before drawing"
         for x in range(wall_thickness):
             for y in range(pixel_d):
                 pos: int = pixel + ((x + pixel_d) * line_len) + y * bpp
                 for c in range(bpp):
-                    self.xvar.maze_img[pos + c] = (color >> (8 * c)) & 0xFF
+                    mv[pos + c] = (color >> (8 * c)) & 0xFF
 
     def display_wall_east(self, pixel: int, color: int) -> None:
         """Draw the eastern wall segment for a cell at buffer offset pixel."""
@@ -251,11 +265,13 @@ class MazeRepresentation:
         wall_thickness: int = self.xvar.wall_thickness
         line_len: int = self.xvar.line_len
 
+        mv = self.xvar.maze_img
+        assert mv is not None, "maze_img must be initialized before drawing"
         for x in range(pixel_d + 3):
             for y in range(wall_thickness):
                 pos: int = pixel + x * line_len + ((y + pixel_d) * bpp)
                 for c in range(bpp):
-                    self.xvar.maze_img[pos + c] = (color >> (8 * c)) & 0xFF
+                    mv[pos + c] = (color >> (8 * c)) & 0xFF
 
     def display_wall_west(self, pixel: int, color: int) -> None:
         """Draw the western wall segment for a cell at buffer offset pixel."""
@@ -264,11 +280,13 @@ class MazeRepresentation:
         wall_thickness: int = self.xvar.wall_thickness
         line_len: int = self.xvar.line_len
 
+        mv = self.xvar.maze_img
+        assert mv is not None, "maze_img must be initialized before drawing"
         for x in range(pixel_d + 3):
             for y in range(wall_thickness):
                 pos: int = pixel + x * line_len + y * bpp
                 for c in range(bpp):
-                    self.xvar.maze_img[pos + c] = (color >> (8 * c)) & 0xFF
+                    mv[pos + c] = (color >> (8 * c)) & 0xFF
 
     def put_pixel(self, pixel: int, value: int, color: int) -> None:
         """Plot a cell's walls according to the value bitmask.
@@ -324,7 +342,10 @@ class MazeRepresentation:
         m_ptr: Any = self.xvar.mlx_ptr
         width: int = self.xvar.win_width
         height: int = self.xvar.win_height
-        self.xvar.win_ptr = self.xvar.mlx.mlx_new_window(
+        mlx = self.xvar.mlx
+        assert mlx is not None, "mlx must be initialized before " \
+            "creating window"
+        self.xvar.win_ptr = mlx.mlx_new_window(
             m_ptr, width, height, "A-Maze_Ing")
         if not self.xvar.win_ptr:
             raise Exception("Can't create a window.")
@@ -338,7 +359,9 @@ class MazeRepresentation:
         m_ptr: Any = self.xvar.mlx_ptr
         width: int = self.xvar.img_width
         height: int = self.xvar.img_height
-        self.xvar.img_ptr = self.xvar.mlx.mlx_new_image(m_ptr, width, height)
+        mlx = self.xvar.mlx
+        assert mlx is not None, "mlx must be initialized before creating image"
+        self.xvar.img_ptr = mlx.mlx_new_image(m_ptr, width, height)
 
         if self.xvar.img_ptr is None:
             raise Exception("mlx_new_image returned None")
@@ -350,8 +373,11 @@ class MazeRepresentation:
             Exception: If the returned maze image buffer is None.
         """
         i_ptr: Any = self.xvar.img_ptr
+        mlx = self.xvar.mlx
+        assert mlx is not None, "mlx must be initialized before " \
+            "getting image data"
         self.xvar.maze_img, self.xvar.bpp, self.xvar.line_len, _ = (
-            self.xvar.mlx.mlx_get_data_addr(i_ptr)
+            mlx.mlx_get_data_addr(i_ptr)
         )
         self.xvar.bpp //= 8
 
@@ -362,6 +388,8 @@ class MazeRepresentation:
         """Render menu/help text at the bottom of the window."""
         m_ptr: Any = self.xvar.mlx_ptr
         w_ptr: Any = self.xvar.win_ptr
+        mlx = self.xvar.mlx
+        assert mlx is not None, "mlx must be initialized before drawing text"
         height: int = self.xvar.win_height
         strings: List[str] = [
             "=== A_Maze_Ing ===",
@@ -374,8 +402,8 @@ class MazeRepresentation:
         dif: int = 120 if len(self.maze_gen.logo) else 100
         for s in strings:
             if s != "":
-                self.xvar.mlx.mlx_string_put(
-                    m_ptr, w_ptr, 0, height - dif, self.txt_color, s)
+                mlx.mlx_string_put(m_ptr, w_ptr, 0, height -
+                                   dif, self.txt_color, s)
                 dif -= 20
 
     def quit_mlx(self, params: Optional[Any] = None) -> None:
@@ -385,7 +413,9 @@ class MazeRepresentation:
             params: Optional parameter for compatibility with hook signature.
         """
         m_ptr: Any = self.xvar.mlx_ptr
-        self.xvar.mlx.mlx_loop_exit(m_ptr)
+        mlx = self.xvar.mlx
+        assert mlx is not None, "mlx must be initialized before exiting loop"
+        mlx.mlx_loop_exit(m_ptr)
 
     def key_hook(self, key: int, params: Optional[Any] = None) -> None:
         """Handle keyboard events mapped to application actions.

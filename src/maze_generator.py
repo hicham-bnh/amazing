@@ -9,11 +9,11 @@ from __future__ import annotations
 from typing import (
     Tuple,
     Dict,
-    Union,
     List,
     Set,
     Optional,
     Deque,
+    Any,
 )
 from enum import Enum
 from random import sample, choice
@@ -60,7 +60,7 @@ class Point:
         n_p: Point = Point(p1.row + p2.row, p1.col + p2.col)
         return n_p
 
-    def __eq__(self, other: object) -> bool:  # type: ignore[override]
+    def __eq__(self, other: object) -> bool:
         """Compare two points for equality.
 
         Args:
@@ -169,7 +169,7 @@ class MazeGenerator:
     @classmethod
     def from_dict(
         cls,
-        data: Dict[str, Union[Tuple[int, int], int, str, bool]],
+        data: Dict[str, Any],
     ) -> "MazeGenerator":
         """Create a MazeGenerator from a configuration dictionary.
 
@@ -464,7 +464,7 @@ class MazeGenerator:
                     queue.append(voisin)
         if end not in visited:
             return None
-        current: Point = end
+        current = end
         while current != start:
             self.path.append(current)
             prev_point, move = parent[current]
@@ -475,20 +475,17 @@ class MazeGenerator:
         self.path_str.reverse()
         return self.path
 
-    def convert_to_hex(self) -> List[List[Union[str, int]]]:
+    def convert_to_hex(self) -> List[List[str]]:
         """Convert the integer maze representation to hexadecimal characters.
 
         Returns:
             A 2D list where each cell is a single hexadecimal character string
             representing the wall bits for that cell.
         """
-
         char_hex: str = "0123456789ABCDEF"
-        maze: List[List[Union[str, int]]] = [
-            [15 for _ in range(self.width)] for _ in range(self.height)]
-        for row, height in enumerate(self.maze):
-            for col, value in enumerate(height):
-                maze[row][col] = char_hex[value]
+        maze: List[List[str]] = [
+            [char_hex[value] for value in row] for row in self.maze
+        ]
         return maze
 
     def set_to_file(self) -> None:
@@ -499,7 +496,7 @@ class MazeGenerator:
         """
 
         path_str: str = "".join(self.path_str)
-        maze: List[List[Union[str, int]]] = self.convert_to_hex()
+        maze: List[List[str]] = self.convert_to_hex()
         with open(self.output_file, "w") as fd:
             for row in maze:
                 for value in row:
