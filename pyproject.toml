@@ -49,7 +49,7 @@ Issues = "https://github.com/hicham-bnh/amazing/issues"
 packages = ["mazegen"]
 
 [tool.setuptools.package-data]
-mazegen = ["dependencies/*.txt"]
+mazegen = ["requirements.txt", "mazegen/_wheels/*.whl"]
 
 [tool.flake8]
 max-line-length = 88

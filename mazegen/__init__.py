@@ -1,18 +1,24 @@
-from src.display_maze import MazeRepresentation
-from src.parsing import get_config, transform_data, get_entry_or_exit
-from src.parsing_validator import ParsingValidator
-from src.maze_generator import MazeGenerator, Point, PathEnum
+try:
+    from .display_maze import MazeRepresentation
+    HAVE_MLX = True
+except Exception:
+    MazeRepresentation = None  # type: ignore
+    HAVE_MLX = False
+from .parsing import get_config, transform_data, get_entry_or_exit
+from .data_validator import DataValidator
+from .maze_generator import MazeGenerator, Point, PathEnum
 
 __all__ = [
-    "MazeRepresentation",
     "get_config",
     "transform_data",
     "get_entry_or_exit",
-    "ParsingValidator",
+    "DataValidator",
     "MazeGenerator",
     "Point",
-    "PathEnum"
+    "PathEnum",
 ]
+if HAVE_MLX:
+    __all__.insert(0, "MazeRepresentation")
 
-__authors__ = "tchemin, mobenhab"
+__author__ = "tchemin, mobenhab"
 __version__ = "1.0.0"

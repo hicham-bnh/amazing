@@ -1,25 +1,29 @@
-*This project has been created as part of the 42 curriculum by tchemin, mobenhab.*
+_This project has been created as part of the 42 curriculum by tchemin, mobenhab._
 
 # A-Maze-ing — Maze generator
 
 ## Description
-A-Maze-ing is a small Python project that generates perfect mazes (no cycles, a single path between any two cells) and provides at least one solution path. The generator is delivered as a single reusable module so it can be imported into other projects or packaged for pip distribution (package name: mazegen-*).
+
+A-Maze-ing is a small Python project that generates perfect mazes (no cycles, a single path between any two cells) and provides at least one solution path. The generator is delivered as a single reusable module so it can be imported into other projects or packaged for pip distribution (package name: mazegen-\*).
 
 ## Instructions
 
 Prerequisites
+
 - Python 3.10+
 - make (to use the provided Makefile)
 
 Common Makefile commands
-- make setup       — create a virtual environment in .venv and install build tools
-- make install     — install project dependencies (attempts dependencies/requirements.txt)
+
+- make setup — create a virtual environment in .venv and install build tools
+- make install — install project dependencies (attempts dependencies/requirements.txt)
 - make run FILE=path/to/output — run the main script (main.py); optional FILE arg passed to script
-- make debug       — run main.py under pdb
-- make build       — build the package (creates dist/ with .tar.gz and .whl)
+- make debug — run main.py under pdb
+- make build — build the package (creates dist/ with .tar.gz and .whl)
 - make clean / fclean — remove build artifacts and virtualenv
 
 Quick example
+
 - Create environment and install tools:
   - make setup
   - source .venv/bin/activate
@@ -30,11 +34,21 @@ Quick example
   - Expected output example: dist/mazegen-1.0.0-py3-none-any.whl (actual filename depends on package metadata)
 
 ## Reusable module (mazegen)
-The reusable component is provided as a single module intended for packaging as mazegen-*. The module exposes a MazeGenerator class that encapsulates maze creation, access to the grid, and at least one solution.
+
+The reusable component is provided as a single module intended for packaging as mazegen-\*. The module exposes a MazeGenerator class that encapsulates maze creation, access to the grid, and at least one solution.
+
+If you are using **VSCode** and want access to docstrings and args, try **relaunching** your VSCode or put this in your **settings.json**
+
+```JSON
+{
+  "python.analysis.useLibraryCodeForTypes": true
+}
+```
 
 Basic usage example
+
 ```python
-from src.maze_generator import MazeGenerator
+from mazegen import MazeGenerator
 
 # Instantiate using the real constructor: (height, width, entry_point, exit_point, output_file, perfect)
 mg = MazeGenerator(
@@ -59,6 +73,7 @@ mg.set_to_file()
 ```
 
 Constructor parameters (actual)
+
 - height (int): number of rows
 - width (int): number of columns
 - entry_point (tuple[int, int]): (row, col) for the entry cell
@@ -67,6 +82,7 @@ Constructor parameters (actual)
 - perfect (bool): True -> perfect maze (no extra loops)
 
 Primary methods and attributes (actual)
+
 - generate_maze(): run the full generation flow (init, place logo, wilson_algo, optional postprocessing)
 - maze: internal 2D list of ints representing cell wall bitmasks
 - path: list[Point] representing the found path (set by find_path)
@@ -75,15 +91,18 @@ Primary methods and attributes (actual)
 - set_to_file(): write the hex maze and entry/exit/path info to output_file
 
 Data formats
+
 - grid: list of rows, indexable as grid[y][x]. Typical values: 0 => path, 1 => wall.
 - solution: ordered list of (x, y) tuples from entrance to exit.
 
 Note: The module exposes the internal grid format which may differ from output formats (text, JSON, image). Use provided exporters if available.
 
 ## Configuration file example
+
 An optional txt config accepted by MazeGenerator.from_dict (keys expected by the module):
 
 default_config.txt
+
 ```
   HEIGHT=11
   WIDTH=21
@@ -94,20 +113,24 @@ default_config.txt
 ```
 
 ## Chosen algorithm
+
 Primary algorithm: Recursive Backtracker (depth-first search).
 Reasons:
+
 - Produces perfect mazes (no loops).
 - Simple, fast, and predictable.
 - Easy to extend or bias for different maze shapes.
 
 ## Reusability details
+
 - The reusable unit is the MazeGenerator class in a single file (e.g., mazegen.py) placed at the repository root and designed to be packaged.
-- The package name should follow the mazegen-* convention. After building (make build) the distribution files in dist/ can be installed via pip (pip install dist/mazegen-*.whl).
+- The package name should follow the mazegen-_ convention. After building (make build) the distribution files in dist/ can be installed via pip (pip install dist/mazegen-_.whl).
 - Reusable parts:
   - MazeGenerator (API for generation and access)
   - Export helpers (to_ascii, to_image, dump_json) if present
 
 ## Building the package
+
 1. Create and activate a virtualenv:
    - make setup
    - source .venv/bin/activate
@@ -117,11 +140,12 @@ Reasons:
    - make build
    - artifacts will be in dist/ (both .tar.gz and .whl as generated by Python build tools)
 4. Install locally to test:
-   - pip install dist/mazegen-*.whl
+   - pip install dist/mazegen-\*.whl
 
 Expected artifact example: mazegen-1.0.0-py3-none-any.whl
 
 ## Resources
+
 - Tutorials on maze generation (Recursive Backtracker)
 - Algorithm references (generic algorithms textbooks and online articles)
 - Wilson, D. B. (1996). Generating random spanning trees more quickly than the cover time.
@@ -129,11 +153,12 @@ Expected artifact example: mazegen-1.0.0-py3-none-any.whl
 - setuptools docs: https://setuptools.pypa.io/
 - mypy docs (module layout): https://mypy.readthedocs.io/
 
-
 AI usage
+
 - An AI assistant was used to draft the README content. The maze algorithm implementation and validation were done by the project authors.
 
 ## Team & project management
+
 - Contributors: mobenhab, tchemin
 - Roles:
   - Development: maze generation and export helpers
@@ -145,10 +170,12 @@ AI usage
   - Day 5: documentation and final adjustments
 
 What went well
+
 - Clear modular design with a single reusable module.
-Improvements
+  Improvements
 
 ## Tests and quality checks
+
 - The Makefile includes targets for linting (flake8, mypy) and building. Run make lint to check static quality.
 - Add unit tests in tests/ and run with pytest.
 

@@ -4,11 +4,11 @@ This module provides a Pydantic BaseModel used to validate maze configuration
 parameters (width, height, entry/exit points, perfect, output file). All
 validators include Google-style docstrings and explicit typing.
 """
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Any
 from pydantic import BaseModel, field_validator, ValidationInfo
 
 
-class ParsingValidator(BaseModel):
+class DataValidator(BaseModel):
     """Pydantic model validating maze configuration inputs.
 
     Attributes:
@@ -46,19 +46,18 @@ class ParsingValidator(BaseModel):
         if value > 120:
             raise ValueError("cannot be above 120")
         return value
-    
 
     @field_validator("entry_point", "exit_point")
     @classmethod
     def check_limit_entry_exit_point(
         cls,
-        case: Tuple[int, int],
+        v: Tuple[int, int],
         validation: ValidationInfo,
     ) -> Tuple[int, int]:
         """Validate entry/exit coordinates are non-negative and in bounds.
 
         Args:
-            case: Tuple of (row, col) for entry or exit.
+            v: Tuple of (row, col) for entry or exit.
             validation: Pydantic ValidationInfo providing access to
             other fields.
 
@@ -69,15 +68,15 @@ class ParsingValidator(BaseModel):
             ValueError: If coordinates are negative or out of
             configured bounds.
         """
-        if case[0] < 0 or case[1] < 0:
+        if v[0] < 0 or v[1] < 0:
             raise ValueError("entry/exit cannot be negative")
         width: Optional[int] = validation.data.get("width")
         height: Optional[int] = validation.data.get("height")
-        if (width is not None and case[0] >= width) or (
-            height is not None and case[1] >= height
+        if (width is not None and v[0] >= width) or (
+            height is not None and v[1] >= height
         ):
             raise ValueError("entry/exit ERROR")
-        return case
+        return v
 
     @field_validator("exit_point")
     @classmethod
@@ -104,31 +103,26 @@ class ParsingValidator(BaseModel):
             raise ValueError("the entry cannot be the exit")
         return value
 
-    @field_validator("perfect")
+    @field_validator("perfect", mode="before")
     @classmethod
-    def check_perfect(cls, maze: bool) -> bool:
+    def check_perfect(cls, v: Any, validation: ValidationInfo) -> bool:
         """Validate that 'perfect' is a boolean.
 
-        Args:
-            maze: The provided perfect flag.
-
-        Returns:
-            The validated boolean value.
-
-        Raises:
-            ValueError: If the provided value is not a boolean.
+        This runs before pydantic's type coercion so raw strings like "True"
+        will be rejected.
         """
-        if not isinstance(maze, bool):
-            raise ValueError("Error for perfect : True or False")
-        return maze
+        if not isinstance(v, bool):
+            raise ValueError(
+                "Error for perfect : True or False (must be a boolean)")
+        return v
 
     @field_validator("output_file")
     @classmethod
-    def check_output(cls, file: str) -> str:
+    def check_output(cls, v: str) -> str:
         """Validate output file is a string.
 
         Args:
-            file: The provided output file path.
+            v: The provided output file path.
 
         Returns:
             The validated file path string.
@@ -136,6 +130,6 @@ class ParsingValidator(BaseModel):
         Raises:
             ValueError: If the provided value is not a string.
         """
-        if not isinstance(file, str):
+        if not isinstance(v, str):
             raise ValueError("file output ERROR")
-        return file
+        return v

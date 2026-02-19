@@ -19,6 +19,7 @@ from enum import Enum
 from random import sample, choice
 from collections import deque
 from dataclasses import dataclass
+from .data_validator import DataValidator
 
 
 @dataclass(slots=True, frozen=True)
@@ -153,7 +154,17 @@ class MazeGenerator:
             output_file: Path to the file where the maze will be written.
             perfect: If True, produce a perfect maze (no loops).
         """
-
+        try:
+            DataValidator(
+                width=width,
+                height=height,
+                entry_point=entry_point,
+                exit_point=exit_point,
+                perfect=perfect,
+                output_file=output_file
+            )
+        except Exception as e:
+            raise ValueError(f"Error configurating maze: {e}")
         self.height: int = height
         self.width: int = width
         self.entry_point: Point = Point.from_tuple(entry_point)
@@ -308,9 +319,6 @@ class MazeGenerator:
         """Break a small number of walls on the solution path to
         create loops."""
 
-        if self.height == 1 or self.width == 1:
-            return
-
         valid_points: Set[Point] = set()
         for row in range(self.height):
             for col in range(self.width):
@@ -320,7 +328,7 @@ class MazeGenerator:
 
         n_to_break: int = int(max(5 * (self.width * self.height) // 100, 1))
         for _ in range(n_to_break):
-            random_point: Point = sample(valid_points, 1)[0]
+            random_point: Point = sample(tuple(valid_points), 1)[0]
 
             neighbors: Set[Tuple[PathEnum, Point]] = set()
             for k, v in self.directions.items():
@@ -334,7 +342,7 @@ class MazeGenerator:
                     neighbors.add((k, neighbor))
 
             if len(neighbors) == 0:
-                random_point = sample(valid_points, 1)[0]
+                random_point = sample(tuple(valid_points), 1)[0]
                 continue
 
             random_neighbor: Tuple[PathEnum, Point] = sample(tuple(neighbors),

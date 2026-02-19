@@ -8,7 +8,7 @@ style docstrings and explicit typing.
 
 from functools import wraps
 from mlx import Mlx
-from src.maze_generator import MazeGenerator, PathEnum, Point
+from .maze_generator import MazeGenerator, PathEnum, Point
 from typing import Dict, Union, Tuple, Callable, Any, Optional, List
 
 

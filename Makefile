@@ -22,9 +22,9 @@ help:
 install:
 	$(PIP) install --upgrade pip setuptools wheel || true
 	# Try installing requirements from dependencies/, but don't abort on failure
-	$(PIP) install -r dependencies/requirements.txt || echo "Warning: some packages from dependencies/requirements.txt failed to install"
+	$(PIP) install -r requirements.txt || echo "Warning: some packages from requirements.txt failed to install"
 	# Install any local wheels present (no-op if none)
-	$(PIP) install dependencies/*.whl || echo "No local .whl files found in dependencies/"
+	$(PIP) install mazegen/_wheels/*.whl || echo "No local .whl files found in mazegen/_wheels/"
 
 run:
 	$(PYTHON) $(MAIN_SCRIPT) $(FILE)

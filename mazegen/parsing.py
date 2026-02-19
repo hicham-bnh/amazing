@@ -8,7 +8,7 @@ Provides:
 
 from typing import Any, Dict, List, Optional, Tuple
 
-from src.parsing_validator import ParsingValidator
+from .data_validator import DataValidator
 
 
 def get_entry_or_exit(path: str) -> Tuple[int, int]:
@@ -63,7 +63,7 @@ def transform_data(data: Dict[str, Any]) -> None:
     data["ENTRY"] = (entry_point[1], entry_point[0])
 
     try:
-        ParsingValidator(
+        DataValidator(
             width=data["WIDTH"],
             height=data["HEIGHT"],
             entry_point=data["ENTRY"],
