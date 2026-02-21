@@ -47,11 +47,11 @@ fclean: clean
 lint:
 	flake8 . --exclude=.git,.venv,venv,env,test_vm,build,dist,.mypy_cache,.pytest_cache,__pycache__,dependencies,src,*.egg-info
 	mypy . --warn-return-any --warn-unused-ignores --ignore-missing-imports \
-		--disallow-untyped-defs --check-untyped-defs --exclude='(build|dist|venv|env|test_vm|dependencies|src)'
+		--disallow-untyped-defs --check-untyped-defs --exclude='(build|dist|venv|env|dependencies|src)'
 
 lint-strict:
 	flake8 . --exclude=.git,.venv,venv,env,test_vm,build,dist,.mypy_cache,.pytest_cache,__pycache__,dependencies,src,*.egg-info
-	mypy . --strict --exclude='(build|dist|venv|env|test_vm|dependencies|src)'
+	mypy . --strict --exclude='(build|dist|venv|env|dependencies|src)'
 
 build: clean
 	$(PYTHON) -m pip install --upgrade build setuptools wheel
