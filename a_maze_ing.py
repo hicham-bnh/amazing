@@ -1,9 +1,5 @@
-"""Entry point for the A-Maze_Ing application.
+#!/usr/bin/env python3
 
-This module parses configuration, prepares the maze representation and
-starts the graphical loop using the mlx wrapper. The main() function
-initializes required resources and handles top-level errors.
-"""
 from mazegen.display_maze import MazeRepresentation
 from mazegen.parsing import get_config
 

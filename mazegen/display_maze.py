@@ -1,11 +1,3 @@
-"""
-Display utilities for the A-Maze_Ing application.
-
-This module provides MazeRepresentation which renders a generated maze using
-the provided mlx wrapper. All public functions and classes include Google-
-style docstrings and explicit typing.
-"""
-
 from functools import wraps
 from mlx import Mlx
 from .maze_generator import MazeGenerator, PathEnum, Point

@@ -1,10 +1,3 @@
-"""
-Maze generation utilities for the A-Maze_Ing application.
-
-This module implements a Point representation, a PathEnum of directions and
-a MazeGenerator that creates mazes using Wilson's algorithm. All public
-functions and classes include Google-style docstrings and explicit typing.
-"""
 from __future__ import annotations
 from typing import (
     Tuple,

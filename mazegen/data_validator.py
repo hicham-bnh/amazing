@@ -1,9 +1,3 @@
-"""Validation helpers for CLI/config parsing.
-
-This module provides a Pydantic BaseModel used to validate maze configuration
-parameters (width, height, entry/exit points, perfect, output file). All
-validators include Google-style docstrings and explicit typing.
-"""
 from typing import Tuple, Optional, Any
 from pydantic import BaseModel, field_validator, ValidationInfo
 
@@ -72,10 +66,12 @@ class DataValidator(BaseModel):
             raise ValueError("entry/exit cannot be negative")
         width: Optional[int] = validation.data.get("width")
         height: Optional[int] = validation.data.get("height")
-        if (width is not None and v[0] >= width) or (
-            height is not None and v[1] >= height
+        if (width is not None and v[1] >= width) or (
+            height is not None and v[0] >= height
         ):
-            raise ValueError("entry/exit ERROR")
+            raise ValueError(
+                f"entry/exit ERROR: out of bounds {v} for width {width} "
+                f"and height {height}")
         return v
 
     @field_validator("exit_point")

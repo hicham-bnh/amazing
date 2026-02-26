@@ -1,6 +1,6 @@
 PYTHON := python3
 PIP := pip
-MAIN_SCRIPT := main.py
+MAIN_SCRIPT := a_maze_ing.py
 PROJECT_NAME := mazegen
 VENV := .venv
 REQUIREMENTS := requirements.txt

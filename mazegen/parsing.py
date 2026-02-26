@@ -1,11 +1,3 @@
-"""Parse maze configuration from a 'config.txt' file.
-
-Provides:
-    get_entry_or_exit: Parse a coordinate string "x,y" -> (x, y).
-    transform_data: Convert raw string values to proper types.
-    get_config: Read and parse the config file into a typed dict.
-"""
-
 from typing import Any, Dict, List, Optional, Tuple
 
 from .data_validator import DataValidator
