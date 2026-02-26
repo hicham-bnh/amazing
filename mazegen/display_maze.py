@@ -70,6 +70,8 @@ class MazeRepresentation:
         self.wall_color2: int = 0xFFBDFF99
         self.logo_color: int = 0xFFFF0000
         self.path_color: int = 0xFF5050FF
+        self.entry_exit_color: int = 0xFFFF0000
+        self.entry_exit_printed: int = 0
         self.path_printed: int = 0
         self.logo_printed: int = 0
         self.wall_colored: int = 0
@@ -311,6 +313,11 @@ class MazeRepresentation:
                               col * self.xvar.pixel_d * self.xvar.bpp)
                 self.put_pixel(pixel, value, color)
 
+        entry_pos: Point = self.maze_gen.entry_point
+        exit_pos: Point = self.maze_gen.exit_point
+        self.fill_case(self.entry_exit_color, [entry_pos])
+        self.fill_case(self.entry_exit_color, [exit_pos])
+
     @clear_window
     @new_img
     @display_img
@@ -420,6 +427,11 @@ class MazeRepresentation:
             self.redisplay_maze()
             return
         if key == 50:  # 2
+            path: List[Point] = self.maze_gen.path
+            for p in path:
+                if p == self.maze_gen.entry_point \
+                        or p == self.maze_gen.exit_point:
+                    path.remove(p)
             if self.path_printed == 0:
                 self.fill_case(self.path_color, self.maze_gen.path)
                 self.path_printed = 1
