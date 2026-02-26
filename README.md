@@ -2,6 +2,24 @@ _This project has been created as part of the 42 curriculum by tchemin, mobenhab
 
 # A-Maze-ing — Maze generator
 
+## Table of contents
+
+- [Description](#description)
+- [Instructions](#instructions)
+  - [Prerequisites](#prerequisites)
+  - [Common Makefile commands](#common-makefile-commands)
+- [Quick example](#quick-example)
+- [Reusable module (mazegen)](#reusable-module-mazegen)
+- [Configuration file example](#configuration-file-example)
+- [Maze generation algorithm](#maze-generation-algorithm)
+- [Maze resolution algorithm](#maze-resolution-algorithm)
+- [Reusability details](#reusability-details)
+- [Building the package](#building-the-package)
+- [Resources](#resources)
+- [AI usage](#ai-usage)
+- [Team & project management](#team--project-management)
+- [Tests and quality checks](#tests-and-quality-checks)
+
 ## Description
 
 A-Maze-ing is a small Python project that generates perfect mazes (no cycles, a single path between any two cells) and provides at least one solution path. The generator is delivered as a single reusable module so it can be imported into other projects or packaged for pip distribution (package name: mazegen-\*).
@@ -72,7 +90,7 @@ hex_grid = mg.convert_to_hex()
 mg.set_to_file()
 ```
 
-Constructor parameters (actual)
+**Constructor parameters (actual)**
 
 - height (int): number of rows
 - width (int): number of columns
@@ -81,7 +99,7 @@ Constructor parameters (actual)
 - output_file (str): output filepath for set_to_file()
 - perfect (bool): True -> perfect maze (no extra loops)
 
-Primary methods and attributes (actual)
+**Primary methods and attributes (actual)**
 
 - generate_maze(): run the full generation flow (init, place logo, wilson_algo, optional postprocessing)
 - maze: internal 2D list of ints representing cell wall bitmasks
@@ -90,7 +108,7 @@ Primary methods and attributes (actual)
 - convert_to_hex(): return a 2D list of hex characters for each cell
 - set_to_file(): write the hex maze and entry/exit/path info to output_file
 
-Data formats
+**Data formats**
 
 - grid: list of rows, indexable as grid[y][x]. Typical values: 0 => path, 1 => wall.
 - solution: ordered list of (x, y) tuples from entrance to exit.
@@ -112,22 +130,55 @@ default_config.txt
   PERFECT=true
 ```
 
-## Chosen algorithm
+## Maze generation algorithm
 
-Primary algorithm: Recursive Backtracker (depth-first search).
-Reasons:
+Algorithm: Wilson's algorithm (loop-erased random walk) — produces a uniform spanning tree.
 
-- Produces perfect mazes (no loops).
-- Simple, fast, and predictable.
-- Easy to extend or bias for different maze shapes.
+**Overview:**
+
+- Start with a root node (for example the `entry_point`) and treat it as the initial tree. For each remaining cell not yet in the tree, perform an independent random walk until it first hits a cell that is already part of the tree. During the walk, erase any loops (i.e., apply loop-erasure) so the recorded path contains no cycles. Add the resulting loop-erased path to the tree. Repeat until every cell belongs to the tree.
+
+**Characteristics and complexity:**
+
+- Produces a uniformly random spanning tree over the grid graph, which means every possible perfect maze (spanning tree) is equally likely.
+- Time/space: performance depends on the graph and random-walk mixing times; for typical maze sizes Wilson's algorithm is practical and fast. Memory usage is O(N) for storing the final tree and transient path buffers.
+
+**Why this algorithm was chosen:**
+
+- Uniform randomness: Wilson guarantees unbiased sampling of spanning trees, desirable when you want every perfect maze to be equally likely.
+- Robust and deterministic with a fixed RNG seed: results are reproducible when seeding the RNG.
+- Works well with the project's layout and the included `mlx` wheel: it integrates cleanly with post-processing and optional non-perfect variants.
+
+## Maze resolution algorithm
+
+Primary method: Breadth-First Search (BFS) as implemented in `find_path`.
+
+**Overview:**
+
+- The resolver performs a BFS from the `entry_point` to the `exit_point` over the maze graph where vertices are cells and edges exist when there is no wall between two adjacent cells. A `deque` queue is used to explore cells by increasing distance from the start.
+- Traversal respects walls by checking the cell bitmask with `check_walls` and bounds with `check_bounds` so only open passages are followed.
+
+**Behavior and outputs:**
+
+- If a path exists, `find_path` reconstructs the shortest path using a `parent` map (child -> (parent, direction)). It sets `self.path` to an ordered list of `Point` objects from entry to exit and `self.path_str` to the corresponding list of direction names (e.g. `['E','S','S',...]`). The method returns the `self.path` list.
+- If no path is found, the method returns `None`.
+
+**Complexity and rationale:**
+
+- Time complexity: O(N) where N is the number of cells (each cell visited at most once by BFS).
+- Space complexity: O(N) for the `visited`/`parent` structures and the queue.
+- BFS was chosen because it finds the shortest path (fewest steps) in an unweighted grid, is simple to implement, and integrates cleanly with the internal bitmask representation of walls.
+
+**Notes:**
+
+- `find_path` also fills `self.path_str` with direction names (used by exporters) and is used during non-perfect post-processing (when `perfect=False`) to create loops safely.
 
 ## Reusability details
 
 - The reusable unit is the MazeGenerator class in a single file (e.g., mazegen.py) placed at the repository root and designed to be packaged.
-- The package name should follow the mazegen-_ convention. After building (make build) the distribution files in dist/ can be installed via pip (pip install dist/mazegen-_.whl).
+- The package name should follow the mazegen-\_ convention. After building (make build) the distribution files in dist/ can be installed via pip (pip install dist/mazegen-1.0.0-py3-none-any.whl).
 - Reusable parts:
   - MazeGenerator (API for generation and access)
-  - Export helpers (to_ascii, to_image, dump_json) if present
 
 ## Building the package
 
@@ -141,8 +192,9 @@ Reasons:
    - artifacts will be in dist/ (both .tar.gz and .whl as generated by Python build tools)
 4. Install locally to test:
    - pip install dist/mazegen-\*.whl
-
-Expected artifact example: mazegen-1.0.0-py3-none-any.whl
+   - Or, to install the built wheels (package wheel plus bundled wheel) from the virtualenv, run:
+     - `./.venv/bin/python -m pip install mazegen-1.0.0-py3-none-any.whl path/to/package/mazegen/_wheels/mlx-2.2-py3-none-any.whl`
+       This installs both the package wheel and the bundled `mlx` wheel.
 
 ## Resources
 
@@ -159,17 +211,25 @@ AI usage
 
 ## Team & project management
 
-- Contributors: mobenhab, tchemin
-- Roles:
-  - Development: maze generation and export helpers
-  - Documentation & packaging: README and build files
-- Timeline:
+- **Contributors:** mobenhab, tchemin
+- **Timeline:**
   - Day 1: research and algorithm selection
   - Day 2–3: implementation of MazeGenerator
   - Day 4: tests and packaging
   - Day 5: documentation and final adjustments
 
-What went well
+**Work distribution:**
+
+- mobenhab:
+  - Find path
+  - Put maze on screen using MLX
+  - Data validation
+- tchemin:
+  - Maze generation
+  - Building package
+  - Put maze on screen using MLX
+
+**What went well**
 
 - Clear modular design with a single reusable module.
   Improvements

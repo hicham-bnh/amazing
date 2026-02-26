@@ -44,7 +44,10 @@ Repository = "https://github.com/hicham-bnh/amazing.git"
 Issues = "https://github.com/hicham-bnh/amazing/issues"
 
 [tool.setuptools]
-packages = ["mazegen"]
+packages = ["mazegen", "mazegen._wheels"]
 
 [tool.setuptools.package-data]
-mazegen = ["requirements.txt", "mazegen/_wheels/*.whl"]
+mazegen = ["_wheels/*.whl"]
+
+[tool.setuptools.data-files]
+"." = ["requirements.txt"]
