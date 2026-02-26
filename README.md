@@ -237,6 +237,5 @@ AI usage
 ## Tests and quality checks
 
 - The Makefile includes targets for linting (flake8, mypy) and building. Run make lint to check static quality.
-- Add unit tests in tests/ and run with pytest.
 
 ---
