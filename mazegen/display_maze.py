@@ -326,8 +326,8 @@ class MazeRepresentation:
         self.maze_gen.generate_maze()
         self.maze_gen.find_path()
         self.maze_gen.set_to_file()
-        self.display_maze(self.wall_color)
         self.display_txt()
+        self.display_maze(self.wall_color)
         self.wall_colored = 0
         self.path_printed = 0
         self.logo_printed = 0
